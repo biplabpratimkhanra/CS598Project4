@@ -27,7 +27,7 @@ rating_matrix = pd.read_csv(Rmat_path, sep=",")
 
 # Build the similarity matrix
 def build_similarity_matrix_v2():
-    print("Building Similarity Matrix")
+    print("Building Similarity Matrix Started...")
     normalized_rating_matrix = rating_matrix.subtract(rating_matrix.mean(axis=1), axis='rows')
     cardinality_df = (~normalized_rating_matrix.isna()).astype('int')
     cardinality_df = cardinality_df.T
@@ -47,6 +47,7 @@ def build_similarity_matrix_v2():
 
 # Precompute similarity matrix
 similarity_matrix = build_similarity_matrix_v2()
+print("Building Similarity Matrix Completed...")
 
 # Global variable to store user ratings
 user_ratings = pd.Series(dtype=float)
@@ -68,13 +69,13 @@ def myIBCF(S, w, n=10):
     denominator = denominator.replace(0, np.nan)
 
     reco_movies = numerator / denominator
-    print("reco_movies:", reco_movies)
+#    print("reco_movies:", reco_movies)
     reco_movies = reco_movies.fillna(0)
     reco_movies = reco_movies.sort_values(ascending=False)[0:n].dropna()
 
     # Debugging: Print out the generated MovieID and Rating values
-    print("Generated recommendations before conversion:")
-    print(reco_movies)
+ #   print("Generated recommendations before conversion:")
+ #   print(reco_movies)
 
   #  reco_moviesdf = pd.DataFrame({'MovieID': reco_movies.index, 'Rating': reco_movies.values})
     reco_moviesdf = pd.DataFrame({'MovieID': reco_movies.index, 'Rating': reco_movies.values})
@@ -82,8 +83,8 @@ def myIBCF(S, w, n=10):
     #math.ceil(num * factor) / factor
 
     # Debugging: Print out the MovieID column type and unique values
-    print("MovieID type in recommendations:", reco_moviesdf['MovieID'].dtype)
-    print("MovieID unique values in recommendations:", reco_moviesdf['MovieID'].unique())
+  #  print("MovieID type in recommendations:", reco_moviesdf['MovieID'].dtype)
+  #  print("MovieID unique values in recommendations:", reco_moviesdf['MovieID'].unique())
 
     return reco_moviesdf
 
@@ -99,14 +100,14 @@ def home():
 def rate_movie():
     global user_ratings
     data = request.json
-    print("Received ratings:", data)
+   # print("Received ratings:", data)
 
     # Convert the received ratings to a pandas Series and ensure numeric types
     user_ratings = pd.Series(data).apply(pd.to_numeric, errors='coerce').reindex(similarity_matrix.columns, fill_value=0)
 
     # Debugging: Print the updated user ratings
-    print("Updated user ratings:")
-    print(user_ratings)
+    #print("Updated user ratings:")
+    #print(user_ratings)
 
     return jsonify({"success": True, "message": "Ratings received!"})
 
@@ -118,31 +119,31 @@ def recommend():
         return jsonify({"success": False, "message": "No user ratings available."})
 
     # Debugging: Print user ratings type and content
-    print("User ratings type:", user_ratings.dtype)
-    print("User ratings content:")
-    print(user_ratings)
+    #print("User ratings type:", user_ratings.dtype)
+    #print("User ratings content:")
+    #print(user_ratings)
 
     # Generate recommendations using the updated user ratings
     recommendations = myIBCF(similarity_matrix, user_ratings, n=10)
-    print("*********recommendations********:", recommendations)
+    #print("*********recommendations********:", recommendations)
 
     # Debugging: Print data types and unique values before merging
-    print("Recommendations before merging:")
-    print("MovieID type in recommendations:", recommendations['MovieID'].dtype)
-    print("MovieID unique values in recommendations:", recommendations['MovieID'].unique())
+    #print("Recommendations before merging:")
+    #print("MovieID type in recommendations:", recommendations['MovieID'].dtype)
+    #print("MovieID unique values in recommendations:", recommendations['MovieID'].unique())
 
     # Merge with movie data to get titles and posters
     recommendations = recommendations.merge(moviesData, on='MovieID', how='left')
 
     # Debugging: Print merged recommendations
-    print("*********Recommendations after merging********:")
-    print(recommendations)
+    #print("*********Recommendations after merging********:")
+    #print(recommendations)
 
     # Ensure the poster URL format is correct
     recommendations['poster'] = IMG_URL + recommendations['MovieID'].str.replace('m', '') + '.jpg?raw=true'
 
     result = recommendations[['Title', 'poster','Genres','Rating']].to_dict(orient='records')
-    print("***************** result **************:", result)
+    #print("***************** result **************:", result)
     return jsonify(success=True, recommendations=result)
 
 
