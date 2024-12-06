@@ -1,1 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommendations</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .movie-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-height: 600px;
+            overflow-y: scroll;
+            border: 1px solid #ddd;
+            margin: 10px auto;
+            width: 80%;
+        }
+        .movie-card {
+            border: 1px solid #ddd;
+            margin: 10px;
+            padding: 10px;
+            width: 200px;
+            text-align: center;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .movie-card img {
+            width: 100%;
+            height: auto;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 10px;
+        }
+        .movie-title {
+            margin-top: 10px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .movie-genres {
+            font-size: 14px;
+            color: #555;
+        }
+        .rating-stars {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .star {
+            font-size: 24px;
+            color: #d3d3d3;
+            margin: 2px;
+            cursor: pointer;
+        }
+        .star.active {
+            color: #f5c518;
+        }
+        #submit-ratings, #reset-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #reset-button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+        }
+        #recommendations-container {
+            display: none;
+        }
+        #annotation {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #ff4500; /* Bright orange color */
+            white-space: nowrap; /* Prevent text wrapping */
+            overflow: hidden; /* Hide the overflowing text */
+            display: block;
+            font-weight: bold; /* Make the text bold */
+            font-family: 'Arial', sans-serif; /* Set the font style */
+        }
+        #annotation span {
+            display: inline-block;
+            animation: scroll-left 10s linear infinite;
+        }
+        @keyframes scroll-left {
+            from {
+                transform: translateX(100%);
+            }
+            to {
+                transform: translateX(-100%);
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to Movie Recommendations</h1>
+    <div id="annotation">
+        <span>Rate your movies from the below list and get recommendations.</span>
+    </div>
+    <h2>Top 100 Movies</h2>
+    <div class="movie-container">
+        {% for movie in movies %}
+            <div class="movie-card">
+                <img src="{{ movie['poster'] }}" alt="{{ movie['Title'] }}">
+                <div class="movie-title">{{ movie['Title'] }}</div>
+                <div class="movie-genres">{{ movie['Genres'] }}</div>
+                <div class="rating-stars" data-movie-id="{{ movie['MovieID'] }}">
+                    <span class="star" data-value="1" onclick="rateMovie('{{ movie['MovieID'] }}', 1)">★</span>
+                    <span class="star" data-value="2" onclick="rateMovie('{{ movie['MovieID'] }}', 2)">★</span>
+                    <span class="star" data-value="3" onclick="rateMovie('{{ movie['MovieID'] }}', 3)">★</span>
+                    <span class="star" data-value="4" onclick="rateMovie('{{ movie['MovieID'] }}', 4)">★</span>
+                    <span class="star" data-value="5" onclick="rateMovie('{{ movie['MovieID'] }}', 5)">★</span>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    <button id="submit-ratings" onclick="submitRatings()">Submit Ratings</button>
+    <button id="reset-button" onclick="resetPage()">Reset</button>
+    <div id="recommendations-container">
+        <h2>Your Recommendations</h2>
+        <div class="movie-container" id="recommendations"></div>
+    </div>
+
+    <script>
+        let userRatings = {};
+
+        function rateMovie(movieID, rating) {
+            userRatings[movieID] = rating;
+            const stars = document.querySelectorAll(`.rating-stars[data-movie-id="${movieID}"] .star`);
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+        }
+
+        function submitRatings() {
+            console.log("Submitting ratings:", userRatings);
+            fetch('/rate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(userRatings)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Rating submission response:', data);
+                getRecommendations();
+            })
+            .catch(error => {
+                console.error('Error submitting ratings:', error);
+            });
+        }
+
+        function getRecommendations() {
+            fetch('/recommend')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Recommendations:', data);
+                if (data.success && data.recommendations.length > 0) {
+                    const recommendationsDiv = document.getElementById('recommendations');
+                    recommendationsDiv.innerHTML = '';
+                    data.recommendations.forEach(movie => {
+                        const movieCard = `
+                            <div class="movie-card">
+                                <img src="${movie.poster}" alt="${movie.Title}">
+                                <div class="movie-title">${movie.Title}</div>
+                                <div class="movie-genres">${movie.Genres}</div>
+                                <div class="movie-rating">Rating: ${movie.Rating}</div>
+                            </div>
+                        `;
+                        recommendationsDiv.innerHTML += movieCard;
+                    });
+                    document.getElementById('recommendations-container').style.display = 'block';
+                } else {
+                    document.getElementById('recommendations').innerHTML = '<p>No recommendations available.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching recommendations:', error);
+            });
+        }
+
+        function resetPage() {
+            userRatings = {};
+            location.reload();
+        }
+    </script>
+</body>
+</html>
 
